@@ -11,7 +11,8 @@ import (
 	"time"
 )
 
-var domainfile = flag.String("domain", "", "file containing domain and registrar names")
+var domainfile = flag.String("domain", "", "file with domain names")
+var resolver = flag.String("resolver", "127.0.0.1", "resolver to use")
 
 func main() {
 	flag.Parse()
@@ -25,8 +26,15 @@ func main() {
 	defer f.Close()
 	u := unbound.New()
 	defer u.Destroy()
-	u.ResolvConf("/etc/resolv.conf")
 	u.AddTaFile("Kroot.key")
+
+	if *resolver != "" {
+		if e := u.SetFwd(*resolver); e != nil {
+			log.Fatalf("Failed to set resolver %s\n", e.Error())
+		}
+	} else {
+		u.ResolvConf("/etc/resolv.conf")
+	}
 
 	ch := make(chan [2]string)
 
