@@ -13,6 +13,7 @@ import (
 
 var domainfile = flag.String("domain", "", "file with domain names")
 var resolver = flag.String("resolver", "127.0.0.1", "resolver to use")
+var routines = flag.Int("goroutines", 250, "number of goroutines")
 
 func main() {
 	flag.Parse()
@@ -36,46 +37,54 @@ func main() {
 		u.ResolvConf("/etc/resolv.conf")
 	}
 
-	ch := make(chan [2]string)
+	chout := make(chan [2]string)
+	chin := make(chan string)
 
 	r := bufio.NewReader(f)
+	for i := 0; i < *routines; i++ {
+		go dnssecCrawl(u, chin, chout)
+	}
 	line, _, e := r.ReadLine()
 	go func() {
 		for e == nil {
 			dom := strings.TrimSpace(string(line))
-			go dnssecCrawl(u, dom, ch)
+			chin <- dom
 			line, _, e = r.ReadLine()
 		}
 		if e != nil {
 			time.Sleep(10 * 1e9) // 10 s wait
-			close(ch)
+			close(chin)
+			close(chout)
 		}
 	}()
 
-	for ret := range ch {
+	for ret := range chout {
 		log.Printf("%s:%s", ret[0], ret[1])
 	}
 }
 
-func dnssecCrawl(u *unbound.Unbound, d string, ch chan [2]string) {
-	res, err := u.Resolve(d, dns.TypeSOA, dns.ClassINET)
-	if err != nil {
-		ch <- [2]string{d, err.Error()}
-		return
-	}
-
-	if res.HaveData {
-		if res.Secure {
-			ch <- [2]string{d, "secure"}
-			return
+func dnssecCrawl(u *unbound.Unbound, chin chan string, chout chan [2]string) {
+	for {
+		select {
+		case d := <-chin:
+			res, err := u.Resolve(d, dns.TypeSOA, dns.ClassINET)
+			if err != nil {
+				chout <- [2]string{d, err.Error()}
+				continue
+			}
+			if res.HaveData {
+				if res.Secure {
+					chout <- [2]string{d, "secure"}
+					continue
+				}
+				if res.Bogus {
+					chout <- [2]string{d, "bogus"}
+					continue
+				}
+				chout <- [2]string{d, "insecure"}
+				continue
+			}
+			chout <- [2]string{d, "nodata"}
 		}
-		if res.Bogus {
-			ch <- [2]string{d, "bogus"}
-			return
-		}
-		ch <- [2]string{d, "insecure"}
-		return
 	}
-	ch <- [2]string{d, "nodata"}
-	return
 }
