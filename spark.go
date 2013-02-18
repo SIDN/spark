@@ -45,7 +45,7 @@ func main() {
 	}()
 
 	for ret := range ch {
-		log.Printf(ret[0], ":", ret[1])
+		log.Printf("%s:%s", ret[0], ret[1])
 	}
 }
 
