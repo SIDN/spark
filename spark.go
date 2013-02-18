@@ -78,7 +78,7 @@ func dnssecCrawl(u *unbound.Unbound, chin chan string, chout chan [2]string) {
 					continue
 				}
 				if res.Bogus {
-					chout <- [2]string{d, "bogus"}
+					chout <- [2]string{d, "bogus" + ":" + res.WhyBogus}
 					continue
 				}
 				chout <- [2]string{d, "insecure"}
