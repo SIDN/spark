@@ -42,7 +42,7 @@ func main() {
 
 	r := bufio.NewReader(f)
 	for i := 0; i < *routines; i++ {
-		go dnssecCrawl(u, chin, chout)
+		go lookup(u, chin, chout)
 	}
 	line, _, e := r.ReadLine()
 	go func() {
@@ -63,7 +63,7 @@ func main() {
 	}
 }
 
-func dnssecCrawl(u *unbound.Unbound, chin chan string, chout chan [2]string) {
+func lookup(u *unbound.Unbound, chin chan string, chout chan [2]string) {
 	for {
 		select {
 		case d := <-chin:
