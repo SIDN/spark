@@ -8,7 +8,7 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
+	"sync"
 )
 
 var domainfile = flag.String("domain", "", "file with domain names")
@@ -39,10 +39,14 @@ func main() {
 
 	chout := make(chan [2]string)
 	chin := make(chan string)
+	stop := make([]chan bool, *routines)
 
 	r := bufio.NewReader(f)
+	wg := new(sync.WaitGroup)
+	wg.Add(*routines)
 	for i := 0; i < *routines; i++ {
-		go lookup(u, chin, chout)
+		stop[i] = make(chan bool)
+		go lookup(u, chin, chout, wg, stop[i])
 	}
 	line, _, e := r.ReadLine()
 	go func() {
@@ -52,7 +56,10 @@ func main() {
 			line, _, e = r.ReadLine()
 		}
 		if e != nil {
-			time.Sleep(10 * 1e9) // 10 s wait
+			for i := 0; i < *routines; i++ {
+				stop[i] <- true
+			}
+			wg.Wait()
 			close(chin)
 			close(chout)
 		}
@@ -63,9 +70,12 @@ func main() {
 	}
 }
 
-func lookup(u *unbound.Unbound, chin chan string, chout chan [2]string) {
+func lookup(u *unbound.Unbound, chin chan string, chout chan [2]string, wg *sync.WaitGroup, stop chan bool) {
 	for {
 		select {
+		case <-stop:
+			wg.Done()
+			return
 		case d := <-chin:
 			res, err := u.Resolve(d, dns.TypeSOA, dns.ClassINET)
 			if err != nil {
