@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"flag"
+	"fmt"
 	"github.com/miekg/dns"
 	"github.com/miekg/unbound"
 	"log"
@@ -66,7 +67,7 @@ func main() {
 	}()
 
 	for ret := range chout {
-		log.Printf("%s:%s", ret[0], ret[1])
+		fmt.Println(ret[0],":",ret[1])
 	}
 }
 
