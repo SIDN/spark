@@ -38,8 +38,8 @@ func main() {
 		u.ResolvConf("/etc/resolv.conf")
 	}
 
-	chout := make(chan [2]string)
-	chin := make(chan string)
+	chout := make(chan [2]string, *routines*2)
+	chin := make(chan string, *routines*2)
 	stop := make([]chan bool, *routines)
 
 	r := bufio.NewReader(f)
