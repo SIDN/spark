@@ -28,7 +28,7 @@ func main() {
 	defer f.Close()
 	u := unbound.New()
 	defer u.Destroy()
-	u.AddTaFile(`;; ANSWER SECTION:
+	u.AddTa(`;; ANSWER SECTION:
 .                       168307 IN DNSKEY 257 3 8 (
                                 AwEAAagAIKlVZrpC6Ia7gEzahOR+9W29euxhJhVVLOyQ
                                 bSEW0O8gcCjFFVQUTf6v58fLjwBd0YI0EzrAcQqBGCzh
