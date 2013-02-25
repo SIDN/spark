@@ -13,7 +13,7 @@ import (
 	"sync"
 )
 
-var domainfile = flag.String("domain", "", "file with domain names")
+var domainfile = flag.String("names", "", "file with domain names")
 var resolver = flag.String("resolver", "127.0.0.1", "resolver to use")
 var routines = flag.Int("goroutines", 250, "number of goroutines")
 
