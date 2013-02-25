@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/miekg/dns"
 	"github.com/miekg/unbound"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -18,12 +19,15 @@ var routines = flag.Int("goroutines", 250, "number of goroutines")
 
 func main() {
 	flag.Parse()
+	var f io.ReadCloser
+	var e error
 	if *domainfile == "" {
-		log.Fatalf("domainfile is empty\n")
-	}
-	f, e := os.Open(*domainfile)
-	if e != nil {
-		log.Fatalf("Failed to open %s: %s\n", *domainfile, e.Error())
+		f = os.Stdin
+	} else {
+		f, e = os.Open(*domainfile)
+		if e != nil {
+			log.Fatalf("Failed to open %s: %s\n", *domainfile, e.Error())
+		}
 	}
 	defer f.Close()
 	u := unbound.New()
