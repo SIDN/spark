@@ -14,8 +14,9 @@ import (
 )
 
 var domainfile = flag.String("names", "", "file with domain names")
-var resolver = flag.String("resolver", "127.0.0.1", "resolver to use")
+var resolver = flag.String("resolver", "", "resolver to use")
 var routines = flag.Int("goroutines", 250, "number of goroutines")
+var rcode string
 
 func main() {
 	flag.Parse()
@@ -86,6 +87,7 @@ func main() {
 }
 
 func lookup(u *unbound.Unbound, chin chan string, chout chan [2]string, wg *sync.WaitGroup, stop chan bool) {
+
 	for {
 		select {
 		case <-stop:
@@ -97,19 +99,34 @@ func lookup(u *unbound.Unbound, chin chan string, chout chan [2]string, wg *sync
 				chout <- [2]string{d, err.Error()}
 				continue
 			}
-			if res.HaveData {
+
+			if res.Rcode==0 {
+				rcode="(0 - noerror)"
+			} else {
+				if res.Rcode==2 {
+					rcode="(2 - servfail)"
+				} else {
+					if res.Rcode==3 {
+						rcode="(3 - nxdomain)"
+					} else {
+						rcode=fmt.Sprintf("(rcode: %d)", res.Rcode)
+					}
+				}
+			}
+ 
+			if res.HaveData || res.NxDomain {
 				if res.Secure {
-					chout <- [2]string{d, "secure"}
+					chout <- [2]string{d, "secure "}
 					continue
 				}
 				if res.Bogus {
 					chout <- [2]string{d, "bogus" + ":" + res.WhyBogus}
 					continue
 				}
-				chout <- [2]string{d, "insecure"}
+				chout <- [2]string{d, "insecure "}
 				continue
 			}
-			chout <- [2]string{d, "nodata"}
+			chout <- [2]string{d, "nodata " + rcode}
 		}
 	}
 }
