@@ -116,14 +116,14 @@ func lookup(u *unbound.Unbound, chin chan string, chout chan [2]string, wg *sync
  
 			if res.HaveData || res.NxDomain {
 				if res.Secure {
-					chout <- [2]string{d, "secure "}
+					chout <- [2]string{d, "secure"}
 					continue
 				}
 				if res.Bogus {
 					chout <- [2]string{d, "bogus" + ":" + res.WhyBogus}
 					continue
 				}
-				chout <- [2]string{d, "insecure "}
+				chout <- [2]string{d, "insecure"}
 				continue
 			}
 			chout <- [2]string{d, "nodata " + rcode}
