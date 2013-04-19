@@ -26,10 +26,10 @@ import (
 
 var domainfile = flag.String("names", "", "file with domain names")
 var resolver = flag.String("resolver", "", "IP-addr for caching proxy or 'none' or entirely empty for /etc/resolv.conf")
-var randomize = flag.Bool("randomize", false, "Add a random qname-label (for deeper inspection, but it may trigger RRL)")
 var rrtype = flag.String("rrtype", "A", "Pick any RR type (most common are implemented, otherwise try RFC3597-style")
-var routines = flag.Int("goroutines", 250, "number of goroutines")
+var routines = flag.Int("goroutines", 50, "number of goroutines")
 // sometimes we want to trigger and force 'denial of existence'
+var randomize = flag.Bool("randomize", false, "Add a random qname-label (for deeper inspection, but it may trigger RRL)")
 
 var rcode string
 var strX int
