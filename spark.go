@@ -1,6 +1,6 @@
 //
 //
-// Tool to resolve a (large) file of domainnames in an effient fashion
+// Tool to resolve a (large) file of domain names in an efficient fashion
 // Meant to test domainnames in various ways, in particular to see if they validate
 //
 // SIDN Labs 2013
