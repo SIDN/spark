@@ -196,7 +196,7 @@ func lookup(u *unbound.Unbound, chin chan string, chout chan [2]string, wg *sync
 				chout <- [2]string{d, "insecure"}
 				continue
 			}
-			// return the qname instead of 'd' (because then we always end with a dot)
+			// return the qname instead of 'd' (because we always want to terminate with a dot)
 			chout <- [2]string{res.Qname, "nodata " + rcode}
 		}
 	}
