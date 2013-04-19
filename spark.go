@@ -1,9 +1,19 @@
+//
+//
+// Tool to resolve a (large) file of domainnames in an effient fashion
+// Meant to test domainnames in various ways, in particular to see if they validate
+//
+// SIDN Labs 2013
+//
+//
+
 package main
 
 import (
 	"bufio"
 	"flag"
 	"fmt"
+	"strconv"
 	"github.com/miekg/dns"
 	"github.com/miekg/unbound"
 	"io"
@@ -11,15 +21,57 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"crypto/rand"
 )
 
 var domainfile = flag.String("names", "", "file with domain names")
-var resolver = flag.String("resolver", "", "resolver to use")
+var resolver = flag.String("resolver", "", "IP-addr for caching proxy or 'none' or entirely empty for /etc/resolv.conf")
+var randomize = flag.Bool("randomize", false, "Add a random qname-label (for deeper inspection, but it may trigger RRL)")
+var rrtype = flag.String("rrtype", "A", "Pick any RR type (most common are implemented, otherwise try RFC3597-style")
 var routines = flag.Int("goroutines", 250, "number of goroutines")
+// sometimes we want to trigger and force 'denial of existence'
+
 var rcode string
+var strX int
+
+var qtype = uint16(1)
+
+// Random string generator
+func randString(n int) string {
+    const alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    var bytes = make([]byte, n)
+    rand.Read(bytes)
+    for i, b := range bytes {
+        bytes[i] = alphanum[b % byte(len(alphanum))]
+    }
+    return string(bytes)
+}
 
 func main() {
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s -names filename [options]\nCurrent settings:\n", os.Args[0])
+		flag.PrintDefaults()
+	}
+
+
 	flag.Parse()
+
+	// get RR type
+	if k, ok := dns.StringToType[strings.ToUpper(*rrtype)]; ok {
+		qtype = k
+	}
+	// RFC3597-style
+	if strings.HasPrefix(*rrtype, "TYPE") {
+		i, e := strconv.Atoi(string([]byte(*rrtype)[4:]))
+			if e == nil {
+				if i > 0 && i <= 65535 {
+					qtype = uint16(i)
+				}
+			}
+	}
+		
+
 	var f io.ReadCloser
 	var e error
 	if *domainfile == "" {
@@ -45,12 +97,20 @@ func main() {
                                 LmqrAmRLKBP1dfwhYB4N7knNnulqQxA+Uk1ihz0=
                                 ) ; key id = 19036`)
 
-	if *resolver != "" {
+	if *resolver != "" && *resolver != "none" {
 		if e := u.SetFwd(*resolver); e != nil {
 			log.Fatalf("Failed to set resolver %s\n", e.Error())
+		} else {
+			// DEBUG fmt.Println("Using " + *resolver + "...\n")
 		}
 	} else {
-		u.ResolvConf("/etc/resolv.conf")
+		if *resolver == "" {
+			// DEBUG
+			// fmt.Println("Using /etc/resolv.conf...\n")
+			u.ResolvConf("/etc/resolv.conf")
+		} else {
+			// DEBUG fmt.Println("Not using any caching proxy...\n")
+		}
 	}
 
 	chout := make(chan [2]string, *routines*2)
@@ -94,7 +154,17 @@ func lookup(u *unbound.Unbound, chin chan string, chout chan [2]string, wg *sync
 			wg.Done()
 			return
 		case d := <-chin:
-			res, err := u.Resolve(d, dns.TypeSOA, dns.ClassINET)
+			if *randomize {
+				strX = len(d)
+				if strX > 249 { // empty string will become '.'
+					chout <- [2]string{d, "is too long for an additional randomization label, refraining"}
+					continue
+				} else {
+					d = randString(5) + "." + d
+				}
+			}
+			res, err := u.Resolve(d, qtype, dns.ClassINET)
+			// TODO: what is the best type to ask for?
 			if err != nil {
 				chout <- [2]string{d, err.Error()}
 				continue
@@ -126,7 +196,8 @@ func lookup(u *unbound.Unbound, chin chan string, chout chan [2]string, wg *sync
 				chout <- [2]string{d, "insecure"}
 				continue
 			}
-			chout <- [2]string{d, "nodata " + rcode}
+			// return the qname instead of 'd' (because then we always end with a dot)
+			chout <- [2]string{res.Qname, "nodata " + rcode}
 		}
 	}
 }
