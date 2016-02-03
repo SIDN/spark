@@ -22,12 +22,14 @@ import (
 	"strings"
 	"sync"
 	"crypto/rand"
+	"reflect"
 )
 
 var domainfile = flag.String("names", "", "file with domain names")
 var resolver = flag.String("resolver", "", "IP-addr for caching proxy or 'none' or entirely empty for /etc/resolv.conf")
 var rrtype = flag.String("rrtype", "A", "Pick any RR type (most common are implemented, otherwise try RFC3597-style")
 var routines = flag.Int("goroutines", 50, "number of goroutines")
+var print_rrs = flag.Bool("print_rrs", false, "print the resource records (if any)")
 // sometimes we want to trigger and force 'denial of existence'
 var randomize = flag.Bool("randomize", false, "Add a random qname-label (for deeper inspection, but it may trigger RRL)")
 
@@ -46,6 +48,35 @@ func randString(n int) string {
     }
     return string(bytes)
 }
+
+func Sprint(rr dns.RR) (s string) {
+	v := reflect.ValueOf(rr).Elem()
+	// Cheat a little, the header is contained in i = 0, so we start with 1
+	for i := 1; i < v.NumField(); i++ {
+		// copy some (all?) code from msg.go
+		switch fv := v.Field(i); fv.Kind() {
+		case reflect.String:
+			s += fv.String()
+		case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			s += strconv.FormatUint(fv.Uint(), 10)
+		case reflect.Slice:
+			switch v.Type().Field(i).Tag {
+			case `dns:"txt"`:
+				for j := 0; j < fv.Len(); j++ {
+					if j > 0 {
+						s += " "
+					}
+					s += strconv.QuoteToASCII(fv.Index(j).String())
+				}
+			}
+		default:
+			s += "Error unpacking RR"
+		}
+		s += " "
+	}
+	return s
+}
+
 
 func main() {
 
@@ -185,6 +216,11 @@ func lookup(u *unbound.Unbound, chin chan string, chout chan [2]string, wg *sync
 			}
  
 			if res.HaveData || res.NxDomain {
+				if (*print_rrs && len(res.Rr) > 0) {
+					for _,r := range(res.Rr) {
+						chout <- [2]string{d, Sprint(r)}
+					}
+				}
 				if res.Secure {
 					chout <- [2]string{d, "secure"}
 					continue
