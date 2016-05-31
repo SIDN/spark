@@ -32,6 +32,7 @@ var routines = flag.Int("goroutines", 50, "number of goroutines")
 var print_rrs = flag.Bool("print_rrs", false, "print the resource records (if any)")
 // sometimes we want to trigger and force 'denial of existence'
 var randomize = flag.Bool("randomize", false, "Add a random qname-label (for deeper inspection, but it may trigger RRL)")
+var insecure = flag.Bool("insecure", false, "Do not check DNSSEC")
 
 var rcode string
 var strX int
@@ -116,7 +117,8 @@ func main() {
 	defer f.Close()
 	u := unbound.New()
 	defer u.Destroy()
-	u.AddTa(`;; ANSWER SECTION:
+    if !*insecure {
+        u.AddTa(`;; ANSWER SECTION:
 .                       168307 IN DNSKEY 257 3 8 (
                                 AwEAAagAIKlVZrpC6Ia7gEzahOR+9W29euxhJhVVLOyQ
                                 bSEW0O8gcCjFFVQUTf6v58fLjwBd0YI0EzrAcQqBGCzh
@@ -127,6 +129,7 @@ func main() {
                                 Yl7OyQdXfZ57relSQageu+ipAdTTJ25AsRTAoub8ONGc
                                 LmqrAmRLKBP1dfwhYB4N7knNnulqQxA+Uk1ihz0=
                                 ) ; key id = 19036`)
+    }
 
 	if *resolver != "" && *resolver != "none" {
 		if e := u.SetFwd(*resolver); e != nil {
@@ -221,15 +224,19 @@ func lookup(u *unbound.Unbound, chin chan string, chout chan [2]string, wg *sync
 						chout <- [2]string{d, Sprint(r)}
 					}
 				}
-				if res.Secure {
-					chout <- [2]string{d, "secure"}
-					continue
-				}
-				if res.Bogus {
-					chout <- [2]string{d, "bogus" + ":" + res.WhyBogus}
-					continue
-				}
-				chout <- [2]string{d, "insecure"}
+                if !*insecure {
+                    if res.Secure {
+                        chout <- [2]string{d, "secure"}
+                        continue
+                    }
+                    if res.Bogus {
+                        chout <- [2]string{d, "bogus" + ":" + res.WhyBogus}
+                        continue
+                    }
+                    chout <- [2]string{d, "insecure"}
+                } else if res.NxDomain {
+                    chout <- [2]string{res.Qname, "nodata " + rcode}
+                }
 				continue
 			}
 			// return the qname instead of 'd' (because we always want to terminate with a dot)
