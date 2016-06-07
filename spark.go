@@ -50,6 +50,19 @@ func randString(n int) string {
     return string(bytes)
 }
 
+func IP6AddrPart(b1 uint64, b2 uint64) (s string) {
+    if (b1 > 0) {
+        s += strconv.FormatUint(b1, 16)
+        if (b2 < 16) {
+            s += "0"
+        }
+        s += strconv.FormatUint(b2, 16)
+    } else {
+        s += strconv.FormatUint(b2, 16)
+    }
+    return s
+}
+
 func Sprint(rr dns.RR) (s string) {
 	v := reflect.ValueOf(rr).Elem()
 	// Cheat a little, the header is contained in i = 0, so we start with 1
@@ -70,13 +83,17 @@ func Sprint(rr dns.RR) (s string) {
 					s += strconv.QuoteToASCII(fv.Index(j).String())
 				}
             case `dns:"a"`:
-                s += strconv.FormatUint(fv.Index(12).Uint(), 10)
-                s += "."
                 s += strconv.FormatUint(fv.Index(13).Uint(), 10)
                 s += "."
                 s += strconv.FormatUint(fv.Index(14).Uint(), 10)
                 s += "."
                 s += strconv.FormatUint(fv.Index(15).Uint(), 10)
+            case `dns:"aaaa"`:
+                s += IP6AddrPart(fv.Index(0).Uint(), fv.Index(1).Uint())
+                for p := 2; p < 15; p += 2 {
+                    s += ":"
+                    s += IP6AddrPart(fv.Index(p).Uint(), fv.Index(p+1).Uint())
+                }
             default:
                 s += "unimplemented type: "
                 s += string(v.Type().Field(i).Tag)
