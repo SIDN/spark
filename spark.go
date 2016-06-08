@@ -83,6 +83,8 @@ func Sprint(rr dns.RR) (s string) {
 					s += strconv.QuoteToASCII(fv.Index(j).String())
 				}
             case `dns:"a"`:
+                s += strconv.FormatUint(fv.Index(12).Uint(), 10)
+                s += "."
                 s += strconv.FormatUint(fv.Index(13).Uint(), 10)
                 s += "."
                 s += strconv.FormatUint(fv.Index(14).Uint(), 10)
