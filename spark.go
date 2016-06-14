@@ -22,7 +22,6 @@ import (
 	"strings"
 	"sync"
 	"crypto/rand"
-	"reflect"
 )
 
 var domainfile = flag.String("names", "", "file with domain names")
@@ -62,52 +61,6 @@ func IP6AddrPart(b1 uint64, b2 uint64) (s string) {
     }
     return s
 }
-
-func Sprint(rr dns.RR) (s string) {
-	v := reflect.ValueOf(rr).Elem()
-	// Cheat a little, the header is contained in i = 0, so we start with 1
-	for i := 1; i < v.NumField(); i++ {
-		// copy some (all?) code from msg.go
-		switch fv := v.Field(i); fv.Kind() {
-		case reflect.String:
-			s += fv.String()
-		case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			s += strconv.FormatUint(fv.Uint(), 10)
-		case reflect.Slice:
-			switch v.Type().Field(i).Tag {
-			case `dns:"txt"`:
-				for j := 0; j < fv.Len(); j++ {
-					if j > 0 {
-						s += " "
-					}
-					s += strconv.QuoteToASCII(fv.Index(j).String())
-				}
-            case `dns:"a"`:
-                s += strconv.FormatUint(fv.Index(12).Uint(), 10)
-                s += "."
-                s += strconv.FormatUint(fv.Index(13).Uint(), 10)
-                s += "."
-                s += strconv.FormatUint(fv.Index(14).Uint(), 10)
-                s += "."
-                s += strconv.FormatUint(fv.Index(15).Uint(), 10)
-            case `dns:"aaaa"`:
-                s += IP6AddrPart(fv.Index(0).Uint(), fv.Index(1).Uint())
-                for p := 2; p < 15; p += 2 {
-                    s += ":"
-                    s += IP6AddrPart(fv.Index(p).Uint(), fv.Index(p+1).Uint())
-                }
-            default:
-                s += "unimplemented type: "
-                s += string(v.Type().Field(i).Tag)
-            }
-		default:
-			s += "Error unpacking RR"
-		}
-		s += " "
-	}
-	return s
-}
-
 
 func main() {
 
@@ -251,7 +204,7 @@ func lookup(u *unbound.Unbound, chin chan string, chout chan [2]string, wg *sync
 			if res.HaveData || res.NxDomain {
 				if (*print_rrs && len(res.Rr) > 0) {
 					for _,r := range(res.Rr) {
-						chout <- [2]string{d, Sprint(r)}
+						chout <- [2]string{d, strings.SplitN(r.String(), "\t", 5)[4]}
 					}
 				}
                 if !*insecure {
