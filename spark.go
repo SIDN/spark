@@ -32,6 +32,7 @@ var print_rrs = flag.Bool("print_rrs", false, "print the resource records (if an
 // sometimes we want to trigger and force 'denial of existence'
 var randomize = flag.Bool("randomize", false, "Add a random qname-label (for deeper inspection, but it may trigger RRL)")
 var insecure = flag.Bool("insecure", false, "Do not check DNSSEC")
+var configfile = flag.String("config", "", "libunbound configuration file")
 
 var rcode string
 var strX int
@@ -99,6 +100,13 @@ func main() {
 	}
 	defer f.Close()
 	u := unbound.New()
+    if *configfile != "" {
+        fmt.Printf("Reading config file %s\n", *configfile)
+        err := u.Config(*configfile)
+        if err != nil {
+            log.Fatalf("Error reading %s", *configfile)
+        }
+    }
 	defer u.Destroy()
     if !*insecure {
         u.AddTa(`;; ANSWER SECTION:
