@@ -119,6 +119,17 @@ func main() {
                                 Yl7OyQdXfZ57relSQageu+ipAdTTJ25AsRTAoub8ONGc
                                 LmqrAmRLKBP1dfwhYB4N7knNnulqQxA+Uk1ihz0=
                                 ) ; key id = 19036`)
+                u.AddTa(`;; ANSWER SECTION:
+.                       172800 IN DNSKEY 257 3 8 (
+                                AwEAAaz/tAm8yTn4Mfeh5eyI96WSVexTBAvkMgJzkKTO
+                                iW1vkIbzxeF3+/4RgWOq7HrxRixHlFlExOLAJr5emLvN
+                                7SWXgnLh4+B5xQlNVz8Og8kvArMtNROxVQuCaSnIDdD5
+                                LKyWbRd2n9WGe2R8PzgCmr3EgVLrjyBxWezF0jLHwVN8
+                                efS3rCj/EWgvIWgb9tarpVUDK/b58Da+sqqls3eNbuv7
+                                pr+eoZG+SrDK6nWeL3c6H5Apxz7LjVc1uTIdsIXxuOLY
+                                A4/ilBmSVIzuDWfdRUfhHdY6+cn8HFRm+2hM8AnXGXws
+                                9555KrUB5qihylGa8subX2Nn6UwNR1AkUTV74bU=
+                                ) ; key id = 20326`)
 	}
 
 	if *resolver != "" && *resolver != "none" {
